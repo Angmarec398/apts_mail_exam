@@ -374,6 +374,7 @@ def connect_type_tag(new_all_deal: list, tags: str = 'D_'):
 
 def main():
     for element in ALL_MAIL_ID:
+        time.sleep(3)
         start_mirror_element(id_element=element)
 
 

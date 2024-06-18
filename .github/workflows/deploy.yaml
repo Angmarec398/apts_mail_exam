@@ -1,0 +1,54 @@
+name: CI/CD apts_mail_exam pipeline
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Debug SSH key
+        run: |
+          ls -l ~/.ssh
+          cat ~/.ssh/id_rsa
+          cat ~/.ssh/known_hosts
+
+      - name: Create directory on server
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} 'mkdir -p ~/home/apts_mail_exam'
+
+      - name: Copy files via SSH
+        run: |
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -r ./* ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:~/home/apts_mail_exam/
+
+      - name: SSH into server and build Docker image
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            sudo apt update
+            sudo apt install -y docker.io
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            cd ~/home/apts_mail_exam
+            docker build -t apts_mail_exam:latest .
+            docker stop apts_mail_exam || true
+            docker rm apts_mail_exam || true
+            docker run -d --name apts_mail_exam \
+              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} \
+              -p 8005:8005 apts_mail_exam:latest
+          EOF
