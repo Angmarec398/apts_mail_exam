@@ -1,8 +1,9 @@
 import requests
 import time
-from get_all_data import get_all_registry_element, get_all_deal
+from get_all_data import get_all_registry_element, get_all_deal, last_day_mail_element
 from dotenv import load_dotenv
 import os
+import datetime
 
 load_dotenv()
 BITRIX_ADMIN_7 = os.getenv("BITRIX_ADMIN_7")
@@ -373,10 +374,17 @@ def connect_type_tag(new_all_deal: list, tags: str = 'D_'):
 
 
 def main():
-    for element in ALL_MAIL_ID:
-        time.sleep(3)
-        start_mirror_element(id_element=element)
+    number_weekday = datetime.datetime.today().isoweekday()
+    days = datetime.datetime.today() - datetime.timedelta(days=1)
+    if number_weekday != 0:
+        for element in last_day_mail_element(need_days=days.strftime("%d.%m.%Y")):
+            time.sleep(3)
+            start_mirror_element(id_element=element)
+    else:
+        for element in ALL_MAIL_ID:
+            time.sleep(3)
+            start_mirror_element(id_element=element)
 
 
 if __name__ == '__main__':
-    pass
+    main()
