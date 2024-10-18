@@ -1,7 +1,7 @@
 import requests
 import time
 
-from database.def_to_db import get_all_id_deal_db, get_all_id_imail_db
+from def_to_db import get_all_id_deal_db, get_all_id_imail_db
 from get_all_data import get_all_registry_element, get_all_deal, last_day_mail_element
 from dotenv import load_dotenv
 import os
