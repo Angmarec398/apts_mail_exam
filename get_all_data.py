@@ -18,6 +18,7 @@ def get_all_registry_element() -> list:
         'IBLOCK_ID': '29',
         'start': count,
     }
+    print(requests.post(url=webhook_url, json=data_total).json())
     total = requests.post(url=webhook_url, json=data_total).json()['total']
     all_mail_id = []
     while count < total:
@@ -48,6 +49,7 @@ def get_all_deal() -> list:
     data_total = {
         'start': count,
     }
+    print(requests.post(url=webhook_url, json=data_total).json())
     total = requests.post(url=webhook_url, json=data_total).json()['total']
     all_deal_id = []
     while count < total:
@@ -59,6 +61,7 @@ def get_all_deal() -> list:
         }
         try:
             all_deal_data = requests.post(url=webhook_url, json=data).json()['result']
+            print(all_deal_data)
         except Exception as ex:
             print("Error in get_registry_element: ", ex)
             time.sleep(2)

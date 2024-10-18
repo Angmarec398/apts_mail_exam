@@ -1,5 +1,7 @@
 import requests
 import time
+
+from database.def_to_db import get_all_id_deal_db, get_all_id_imail_db
 from get_all_data import get_all_registry_element, get_all_deal, last_day_mail_element
 from dotenv import load_dotenv
 import os
@@ -7,8 +9,8 @@ import datetime
 
 load_dotenv()
 BITRIX_ADMIN_7 = os.getenv("BITRIX_ADMIN_7")
-ID_ALL_DEAL = get_all_deal()
-ALL_MAIL_ID = get_all_registry_element()
+ID_ALL_DEAL = get_all_id_deal_db()
+ALL_MAIL_ID = get_all_id_imail_db()
 
 
 def clear_id_list(all_id: list):

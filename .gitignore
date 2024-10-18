@@ -1,3 +1,4 @@
 .env
 pip_hint..md
 ide hint.txt
+.venv
