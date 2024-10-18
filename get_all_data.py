@@ -18,7 +18,6 @@ def get_all_registry_element() -> list:
         'IBLOCK_ID': '29',
         'start': count,
     }
-    print(requests.post(url=webhook_url, json=data_total).json())
     total = requests.post(url=webhook_url, json=data_total).json()['total']
     all_mail_id = []
     while count < total:

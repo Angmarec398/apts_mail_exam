@@ -65,6 +65,7 @@ def get_all_id_imail_db() -> list:
     print('Собраны все письма из БД')
     return all_mail_id
 
+
 # if __name__ == '__main__':
     # add_emails_from_excel('C:/Users/Egor_yrm/Downloads/list_t.xls.xlsx')
     # add_id_deal()

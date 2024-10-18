@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import os
 import datetime
 
+
 load_dotenv()
 BITRIX_ADMIN_7 = os.getenv("BITRIX_ADMIN_7")
 ID_ALL_DEAL = get_all_id_deal_db()
