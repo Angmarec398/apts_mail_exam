@@ -1,4 +1,4 @@
-name: CI/CD apts_mail_exam pipeline
+name: CI/CD apts_mail_exam pipeline test_v1
 
 on:
   push:
@@ -9,9 +9,8 @@ on:
       - master
 
 jobs:
-  deploy:
+  build_container:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -23,32 +22,60 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Debug SSH key
-        run: |
-          ls -l ~/.ssh
-          cat ~/.ssh/id_rsa
-          cat ~/.ssh/known_hosts
-
       - name: Create directory on server
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} 'mkdir -p ~/home/apts_mail_exam'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} 'mkdir -p ~/home/apts_mail_exam_v1'
 
       - name: Copy files via SSH
         run: |
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -r ./* ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:~/home/apts_mail_exam/
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -r ./* ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:~/home/apts_mail_exam_v1/
 
-      - name: SSH into server and build Docker image
+      - name: SSH into server and build Docker image for create_report_point.py
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            sudo apt update
-            sudo apt install -y docker.io
-            sudo systemctl start docker
-            sudo systemctl enable docker
-            cd ~/home/apts_mail_exam
-            docker build -t apts_mail_exam:latest .
-            docker stop apts_mail_exam || true
-            docker rm apts_mail_exam || true
-            docker run -d --name apts_mail_exam \
-              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} \
-              -p 8005:8005 apts_mail_exam:latest
+            cd ~/home/apts_mail_exam_v1
+            docker build -t create_report_point:latest -f create_report_point.Dockerfile . || { echo "Docker build failed"; exit 1; }
+          EOF
+
+  run_create_report_point:
+    runs-on: ubuntu-latest
+    needs: build_container  # Зависимость от build_container
+    steps:
+      - name: SSH into server and run create_report_point container
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            docker run --rm create_report_point:latest \
+              -e DB_USER=${{ secrets.DB_USER }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_PORT=${{ secrets.DB_PORT }} \
+              -e DB_NAME=${{ secrets.DB_NAME }} \
+              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} || { echo "Failed to run container"; exit 1; }
+          EOF
+
+  build_main_container:
+    runs-on: ubuntu-latest
+    needs: run_create_report_point  # Зависимость от run_create_report_point
+    steps:
+      - name: SSH into server and build main Docker image
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd ~/home/apts_mail_exam_v1
+            docker build -t main_app:latest -f Dockerfile . || { echo "Docker build failed"; exit 1; }
+          EOF
+
+  run_main_container:
+    runs-on: ubuntu-latest
+    needs: build_main_container  # Зависимость от build_main_container
+    steps:
+      - name: SSH into server and run main container
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            docker run -d --name main_app \
+              -e DB_USER=${{ secrets.DB_USER }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_PORT=${{ secrets.DB_PORT }} \
+              -e DB_NAME=${{ secrets.DB_NAME }} \
+              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} || { echo "Failed to run main container"; exit 1; }
           EOF

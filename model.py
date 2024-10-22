@@ -4,10 +4,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 from dotenv import load_dotenv
 
-# писания пусти для тестового файла .env
-# load_dotenv(dotenv_path=C:/Users/Egor_yrm/PycharmProjects/apts_mail_exam/.tests.env)
 load_dotenv()
-# Обьявление переменных для баззы данных
+# Объявление переменных для базы данных
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")

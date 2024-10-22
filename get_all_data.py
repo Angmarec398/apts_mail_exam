@@ -1,7 +1,7 @@
 import os
 import time
 from typing import Union
-
+from datetime import datetime
 import requests
 from dotenv import load_dotenv
 
@@ -35,7 +35,12 @@ def get_all_registry_element() -> list:
             time.sleep(2)
             all_mail_data = requests.post(url=webhook_url, json=data).json()['result']
         for mail in all_mail_data:
-            all_mail_id.append(mail['ID'])
+            all_mail_id.append({
+            'id_email': mail['result'][0]['ID'],
+            'number': mail['result'][0]['NAME'],
+            'data': mail['result'][0]['PROPERTY_107'],
+            'last_modified': mail['result'][0]['PROPERTY_257']
+        })
         count += 50
     print('Собраны все письма')
     return all_mail_id
@@ -87,18 +92,29 @@ def last_day_mail_element(need_days: str, step: int = 0) -> Union[list, TimeoutE
     if all_mail.status_code != 200 and step < 3:
         time.sleep(2)
         return last_day_mail_element(need_days, step + 1)
-    elif step > 2:
+    elif step > 3:
         return TimeoutError("Превышен лимит запросов")
     else:
         if len(all_mail.json()['result']) == 0:
             return []
-        elif len(all_mail.json()['result']) == 1:
-            return list(all_mail.json()['result'][0])
         else:
-            mail_id = list()
+            mail_list_to_id = []
             for mail in all_mail.json()['result']:
-                mail_id.append(mail['ID'])
-            return mail_id
+                last_modified = mail.get('PROPERTY_257')
+                if last_modified is None:
+                    now = datetime.now()
+                    formatted_now = now.strftime("%d.%m.%Y %H:%M:%S")
+                else:
+                    formatted_now = list(last_modified.values())[0] if isinstance(last_modified, dict) else last_modified
+
+                data = mail.get('PROPERTY_107', {})
+                mail_list_to_id.append({
+                    'id_email': mail.get('ID'),
+                    'number': mail.get('NAME'),
+                    'data': list(data.values())[0] if data else None,
+                    'last_modified': formatted_now
+                })
+            return mail_list_to_id
 
 
 if __name__ == '__main__':

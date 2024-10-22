@@ -1,12 +1,12 @@
-import requests
-import time
-
-from def_to_db import get_all_id_deal_db, get_all_id_imail_db
-from get_all_data import get_all_registry_element, get_all_deal, last_day_mail_element
-from dotenv import load_dotenv
 import os
-import datetime
+import time
+from datetime import datetime, timedelta
 
+import requests
+from dotenv import load_dotenv
+from def_to_db import get_all_id_deal_db, get_all_id_imail_db
+from get_all_data import last_day_mail_element
+from model import session, Email
 
 load_dotenv()
 BITRIX_ADMIN_7 = os.getenv("BITRIX_ADMIN_7")
@@ -316,9 +316,9 @@ def chain_deal(start_list: list):
 def start_mirror_element(id_element: int):
     """Функция запускающая процесс поиска и добавления связанных элементов в основной элемент"""
     start_list = search_mirror_element(id_element=int(id_element))
-    print(start_list)
+    # print(f"start_list: {start_list}")
     all_chain_deal = chain_deal(start_list=start_list)
-    print(all_chain_deal)
+    # print(f"all_chain_deal: {all_chain_deal}")
     clear_start_list = start_list.copy()
     try:
         clear_start_list.remove(str(id_element))
@@ -376,17 +376,64 @@ def connect_type_tag(new_all_deal: list, tags: str = 'D_'):
         return {'n0': new_deal_tags}
 
 
+# def main():
+#     for element in ALL_MAIL_ID:
+#         start_mirror_element(id_element=element)
+
 def main():
-    number_weekday = datetime.datetime.today().isoweekday()
-    days = datetime.datetime.today() - datetime.timedelta(days=1)
-    if number_weekday != 0:
-        for element in last_day_mail_element(need_days=days.strftime("%d.%m.%Y")):
-            time.sleep(3)
-            start_mirror_element(id_element=element)
+    days = (datetime.today() - timedelta(days=1)).strftime("%d.%m.%Y")
+    current_mail_elements = last_day_mail_element(need_days=days)
+    # Извлекаем уникальные id_email и соответствующие last_modified
+    current_mail_info = {mail['id_email']: mail['last_modified'] for mail in current_mail_elements}
+    db_mail_ids = ALL_MAIL_ID
+    all_ids_api = {int(id_email) for id_email in current_mail_info.keys()}  # Преобразуем в множество
+    # Находим новые и измененные элементы
+    new_mail_ids = all_ids_api - set(db_mail_ids)  # Новые письма
+    changed_mail_ids = {id for id in all_ids_api if id in db_mail_ids and has_changes(id, current_mail_info[str(id)])}
+    print("Измененные письма:", changed_mail_ids)
+    # Запускаем для новых и измененных идентификаторов
+    for element in new_mail_ids | changed_mail_ids:
+        start_mirror_element(id_element=element)
+
+
+def has_changes(id_element: int, last_change_api: str) -> bool:
+    """Функция для проверки, изменился ли элемент и обновления поля recent_changes_data."""
+    email = session.query(Email).filter(Email.id_email == id_element).first()
+    if email:
+        last_change_db = email.recent_changes_data
+        # Сравниваем даты
+        if last_change_api > last_change_db:
+            # Обновляем recent_changes_data
+            email.recent_changes_data = last_change_api
+            session.commit()  # Сохраняем изменения в базе данных
+            print(f'{id_element}: обновлнена дата изменения')
+            return True  # Возвращаем True, так как изменения были
+    print(f"Обновление не требуется {id_element}")
+    return False  # Возвращаем False, если изменений нет
+
+
+import requests
+def get_last_change_date_from_api(id_element: int) -> str:
+    """Функция для получения даты последнего изменения из API."""
+    webhook_url = BITRIX_ADMIN_7 + 'lists.element.get'
+    data = {
+        'IBLOCK_TYPE_ID': 'lists',
+        'IBLOCK_ID': '29',
+        'ELEMENT_ID': id_element
+    }
+    response = requests.post(url=webhook_url, json=data).json()['result']
+
+    # Проверяем, что response не пустой и является списком
+    if isinstance(response, list) and response:
+        last_modified = response[0].get('PROPERTY_257')  # Получаем первый элемент из списка
+        if last_modified is None:
+            return None
+        else:
+            formatted_now = list(last_modified.values())[0] if isinstance(last_modified, dict) else last_modified
+            return formatted_now
     else:
-        for element in ALL_MAIL_ID:
-            time.sleep(3)
-            start_mirror_element(id_element=element)
+        print("Response is empty or not a list.")
+        return None
 
 
 if __name__ == '__main__':
