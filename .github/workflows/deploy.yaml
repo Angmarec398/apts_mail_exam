@@ -42,26 +42,44 @@ jobs:
             docker build -t create_report_point:latest -f create_report_point.Dockerfile . || { echo "Docker build failed"; exit 1; }
           EOF
 
+
   run_create_report_point:
     runs-on: ubuntu-latest
     needs: build_container  # Зависимость от build_container
     steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
       - name: SSH into server and run create_report_point container
         run: |
           ssh -i ~/.ssh/id_rsa -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            docker run --rm create_report_point:latest \
+            docker stop create_report_point || true
+            docker rm create_report_point || true
+            docker run --rm -d --name create_report_point \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
               -e DB_USER=${{ secrets.DB_USER }} \
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -e DB_HOST=${{ secrets.DB_HOST }} \
-              -e DB_PORT=${{ secrets.DB_PORT }} \
               -e DB_NAME=${{ secrets.DB_NAME }} \
-              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} || { echo "Failed to run container"; exit 1; }
+              -e DB_PORT=${{ secrets.DB_PORT }} \
+              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} \
+              create_report_point:latest
           EOF
 
   build_main_container:
     runs-on: ubuntu-latest
     needs: run_create_report_point  # Зависимость от run_create_report_point
     steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
       - name: SSH into server and build main Docker image
         run: |
           ssh -i ~/.ssh/id_rsa -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
@@ -73,14 +91,24 @@ jobs:
     runs-on: ubuntu-latest
     needs: build_main_container  # Зависимость от build_main_container
     steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
       - name: SSH into server and run main container
         run: |
           ssh -i ~/.ssh/id_rsa -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            docker run --name main_app \
+            docker stop main_app || true
+            docker rm main_app || true
+            docker run -d --name main_app \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
               -e DB_USER=${{ secrets.DB_USER }} \
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -e DB_HOST=${{ secrets.DB_HOST }} \
-              -e DB_PORT=${{ secrets.DB_PORT }} \
               -e DB_NAME=${{ secrets.DB_NAME }} \
-              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} || { echo "Failed to run main container"; exit 1; }
+              -e DB_PORT=${{ secrets.DB_PORT }} \
+              -e BITRIX_ADMIN_7=${{ secrets.BITRIX_ADMIN_7 }} \
+              main_app:latest
           EOF
