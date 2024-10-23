@@ -83,7 +83,7 @@ def get_all_deal() -> list:
 
 
 def add_all_emails_to_db():
-    """Функция для добавления всех найденных писем в БД, таблица  - Email."""
+    """Функция для добавления всех найденных писем в БД, таблица - Email."""
     # Стираем все записи из таблицы Email
     session.query(Email).delete()
     session.commit()

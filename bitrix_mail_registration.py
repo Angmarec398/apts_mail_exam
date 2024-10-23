@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import requests
 from dotenv import load_dotenv
 from def_to_db import get_all_id_deal_db, get_all_id_imail_db
-from get_all_data import last_day_mail_element
+from get_all_data import last_day_mail_element, last_timestamp_mail_element
 from model import session, Email
 
 load_dotenv()
@@ -382,14 +382,20 @@ def connect_type_tag(new_all_deal: list, tags: str = 'D_'):
 
 def main():
     days = (datetime.today() - timedelta(days=1)).strftime("%d.%m.%Y")
+    day = (datetime.today()).strftime("%d.%m.%Y")
     current_mail_elements = last_day_mail_element(need_days=days)
+    modified_mail_items = last_timestamp_mail_element(need_days=day)
     # Извлекаем уникальные id_email и соответствующие last_modified
     current_mail_info = {mail['id_email']: mail['last_modified'] for mail in current_mail_elements}
+    modified_mail_info = {mail['id_email']: mail['last_modified'] for mail in modified_mail_items}
+    all_mail_info = {**current_mail_info, **modified_mail_info}
     db_mail_ids = ALL_MAIL_ID
-    all_ids_api = {int(id_email) for id_email in current_mail_info.keys()}  # Преобразуем в множество
+    ids_api_last_day = {int(id_email) for id_email in current_mail_info.keys()}
+    ids_api_modified = {int(id_email) for id_email in modified_mail_info.keys()}
+    all_ids_api = ids_api_last_day | ids_api_modified
     # Находим новые и измененные элементы
-    new_mail_ids = all_ids_api - set(db_mail_ids)  # Новые письма
-    changed_mail_ids = {id for id in all_ids_api if id in db_mail_ids and has_changes(id, current_mail_info[str(id)])}
+    new_mail_ids = all_ids_api - set(db_mail_ids) # Новые письма
+    changed_mail_ids = {id for id in all_ids_api if id in db_mail_ids and has_changes(id, all_mail_info[str(id)])}
     print("Измененные письма:", changed_mail_ids)
     # Запускаем для новых и измененных идентификаторов
     for element in new_mail_ids | changed_mail_ids:
