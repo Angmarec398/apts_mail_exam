@@ -144,7 +144,7 @@ def last_timestamp_mail_element(need_days: str, step: int = 0) -> Union[list, Ti
                     now = datetime.now()
                     formatted_now = now.strftime("%d.%m.%Y %H:%M:%S")
                 else:
-                    formatted_now = list(last_modified.values())[0] if isinstance(last_modified, dict) else last_modified
+                    formatted_now = list(last_modifiead.values())[0] if isinstance(last_modified, dict) else last_modified
 
                 data = mail.get('PROPERTY_107', {})
                 mail_list_to_id.append({
@@ -159,4 +159,4 @@ if __name__ == '__main__':
     days = datetime.datetime.today() - datetime.timedelta(days=1)
     day = datetime.datetime.today()
     print(f"Измененные за сегодня: {last_timestamp_mail_element(day.strftime("%d.%m.%Y"))}")
-    print(last_day_mail_element(days.strftime("%d.%m.%Y")))
+    print(f"За вчера: {last_day_mail_element(days.strftime("%d.%m.%Y"))}")
