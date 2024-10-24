@@ -376,10 +376,6 @@ def connect_type_tag(new_all_deal: list, tags: str = 'D_'):
         return {'n0': new_deal_tags}
 
 
-# def main():
-#     for element in ALL_MAIL_ID:
-#         start_mirror_element(id_element=element)
-
 def main():
     days = (datetime.today() - timedelta(days=1)).strftime("%d.%m.%Y")
     day = (datetime.today()).strftime("%d.%m.%Y")

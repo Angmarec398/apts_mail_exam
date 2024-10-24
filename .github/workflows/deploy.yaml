@@ -84,7 +84,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd ~/home/apts_mail_exam_v1
-            docker build -t main_app:latest -f Dockerfile . || { echo "Docker build failed"; exit 1; }
+            docker build -t main_app:latest -f app.Dockerfile . || { echo "Docker build failed"; exit 1; }
           EOF
 
   run_main_container:
